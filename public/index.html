@@ -1,0 +1,135 @@
+<html>
+	<head>
+		<style>
+			html, body {
+				margin: 0;
+				padding: 0;
+				width: 100%;
+				height: 100%;
+				background: #000;
+			}
+
+			.container {
+				display: flex;
+				flex-direction: row;
+				width: 100%;
+			}
+
+			.feedButton {
+				margin: 15px;
+				padding: 40px; 
+				background: red; 
+				color: white;
+				text-align: center;
+				font-size: 36px;
+				font-weight: bold;
+				user-select: none;
+				flex: 1;
+			}
+
+			.pH {
+				flex: 1;
+				color: #fff;
+				text-align: center;
+				font-size: 36px;
+				font-weight: bold;
+				user-select: none;
+			}
+
+			#messageBox {
+				flex-direction: column;
+				color: #fff;
+				text-align: left;
+				font-size: 24px;
+				user-select: none;
+			}
+			#messageBox div {
+				flex: 1;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<div class="feedButton" data-pin="11" data-gpio="17">Micro</div>
+			<div class="feedButton" data-pin="13" data-gpio="27">Gro</div>
+			<div class="feedButton" data-pin="15" data-gpio="22">Bloom</div>
+			<div class="feedButton" data-pin="16" data-gpio="23">pH -</div>
+			<div class="feedButton" data-pin="18" data-gpio="24">pH +</div>
+		</div>
+		<div class="container">
+			<div class="pH"></div>
+		</div>
+		<div class="container">
+			<div class="silence" data-time="15">15</div>
+			<div class="silence" data-time="30">30</div>
+			<div class="silence" data-time="60">60</div>
+		</div>
+		<div id="messageBox" class="container">
+			
+		</div>
+
+		<script type="text/javascript">
+
+			function setupButton(btn) {
+				var pin = btn.getAttribute('data-pin');
+				btn.ontouchstart = btn.onmousedown = () => {
+					fetch('/feed/' + pin, { method: 'POST'});
+				}
+			}
+
+			function setup_pH(ph) {
+				setInterval(() => {
+					fetch('/pH').then((resp) => {
+						resp.json().then((data) => {
+							ph.innerText = parseFloat(data.ph).toFixed(2) + ' pH';
+						});
+					});
+				}, 1000)
+			}
+
+			function setup_silence(btn) {
+				var t = btn.getAttribute('data-time');
+				btn.ontouchstart = btn.onmousedown = () => {
+					fetch('/silence/' + t);
+				}
+			}
+
+			(function() {
+				var buttons = document.getElementsByClassName('feedButton');
+				for(var i = 0; i < buttons.length; i++) {
+					setupButton(buttons[i]);
+				}
+
+				var pHs = document.getElementsByClassName('pH');
+				for(var i = 0; i < pHs.length; i++) {
+					setup_pH(pHs[i]);
+				}
+
+				var silences = document.getElementsByClassName('silence');
+				for(var i = 0; i < silences.length; i++) {
+					setup_silence(silences[i]);
+				}
+			})();
+		</script>
+		<script src="/socket.io/socket.io.js"></script>
+		<script>
+			  var socket = io();
+			  var messages = [];
+			  var messageBox = document.getElementById('messageBox');
+
+			  function addMessage(msg) {
+				messages.unshift(msg);
+				if (messages.length > 10) {
+					messages.splice(messages.length - 1, 1);
+				}
+				
+				messageBox.innerHTML = messages.map((msg) => '<div>' + msg + '</div>').join('');
+			  }
+
+			socket.on('message', (data) => {
+				console.log(data);
+				addMessage(data);
+			});
+		</script>
+	</body>
+</html>
